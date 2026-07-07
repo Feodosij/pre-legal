@@ -1,0 +1,98 @@
+{
+  "license": "CC BY 4.0",
+  "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+  "source": "https://github.com/CommonPaper",
+  "templates": [
+    {
+      "id": "mutual-nda",
+      "name": "Mutual Non-Disclosure Agreement",
+      "abbreviation": "MNDA",
+      "description": "Allows two parties to disclose confidential information to each other under mutual confidentiality obligations.",
+      "files": ["Mutual-NDA.md", "Mutual-NDA-coverpage.md"],
+      "sourceRepo": "https://github.com/CommonPaper/Mutual-NDA",
+      "standardUrl": "https://commonpaper.com/standards/mutual-nda/1.0/"
+    },
+    {
+      "id": "csa",
+      "name": "Cloud Service Agreement",
+      "abbreviation": "CSA",
+      "description": "Standard terms for a vendor providing a cloud/SaaS product to a customer, covering service access, support, payment, liability, and termination.",
+      "files": ["CSA.md"],
+      "sourceRepo": "https://github.com/CommonPaper/CSA",
+      "standardUrl": "https://commonpaper.com/standards/cloud-service-agreement/2.1/"
+    },
+    {
+      "id": "design-partner-agreement",
+      "name": "Design Partner Agreement",
+      "abbreviation": "DPA-Design",
+      "description": "Governs early access to a product for a design partner in exchange for feedback and participation in a product development program.",
+      "files": ["design-partner-agreement.md"],
+      "sourceRepo": "https://github.com/CommonPaper/Design-Partner-Agreement"
+    },
+    {
+      "id": "sla",
+      "name": "Service Level Agreement",
+      "abbreviation": "SLA",
+      "description": "Defines uptime and response time targets for a cloud service, along with service credit remedies for missed targets.",
+      "files": ["sla.md"],
+      "sourceRepo": "https://github.com/CommonPaper/SLA",
+      "standardUrl": "https://commonpaper.com/standards/service-level-agreement/2.0/"
+    },
+    {
+      "id": "psa",
+      "name": "Professional Services Agreement",
+      "abbreviation": "PSA",
+      "description": "Governs a provider performing professional services for a customer under one or more statements of work (SOWs).",
+      "files": ["psa.md"],
+      "sourceRepo": "https://github.com/CommonPaper/PSA"
+    },
+    {
+      "id": "dpa",
+      "name": "Data Processing Agreement",
+      "abbreviation": "DPA",
+      "description": "Governs the processing of personal data between a data controller and processor, including GDPR/UK GDPR international transfer mechanisms.",
+      "files": ["DPA.md"],
+      "sourceRepo": "https://github.com/CommonPaper/DPA"
+    },
+    {
+      "id": "software-license-agreement",
+      "name": "Software License Agreement",
+      "abbreviation": "SLA-Software",
+      "description": "Governs the licensing of on-premise or self-hosted software from a licensor to a licensee, as opposed to a hosted cloud service.",
+      "files": ["Software-License-Agreement.md"],
+      "sourceRepo": "https://github.com/CommonPaper/Software-License-Agreement"
+    },
+    {
+      "id": "partnership-agreement",
+      "name": "Partnership Agreement",
+      "abbreviation": "Partnership",
+      "description": "Governs a business partnership between two companies collaborating on joint go-to-market or integration activities.",
+      "files": ["Partnership-Agreement.md"],
+      "sourceRepo": "https://github.com/CommonPaper/Partnership-Agreement"
+    },
+    {
+      "id": "pilot-agreement",
+      "name": "Pilot Agreement",
+      "abbreviation": "Pilot",
+      "description": "Governs a limited-time trial or pilot of a product by a prospective customer prior to a full commercial agreement.",
+      "files": ["Pilot-Agreement.md"],
+      "sourceRepo": "https://github.com/CommonPaper/Pilot-Agreement"
+    },
+    {
+      "id": "baa",
+      "name": "Business Associate Agreement",
+      "abbreviation": "BAA",
+      "description": "HIPAA-required agreement between a covered entity and a business associate governing the handling of protected health information (PHI).",
+      "files": ["BAA.md"],
+      "sourceRepo": "https://github.com/CommonPaper/BAA"
+    },
+    {
+      "id": "ai-addendum",
+      "name": "AI Addendum",
+      "abbreviation": "AI-Addendum",
+      "description": "Supplemental terms addressing the use of artificial intelligence features within a product, meant to attach to an underlying agreement.",
+      "files": ["AI-Addendum.md"],
+      "sourceRepo": "https://github.com/CommonPaper/AI-Addendum"
+    }
+  ]
+}
