@@ -82,6 +82,9 @@ logs/
 !.yarn/sdks
 !.yarn/versions
 
+# --- Claude Code ---
+.claude/settings.local.json
+
 # --- Editors / OS ---
 .vscode/
 .idea/
