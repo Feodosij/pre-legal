@@ -20,12 +20,31 @@ def chat_message(payload: ChatRequest) -> ChatResponse:
     try:
         if payload.documentId is None:
             routing = run_routing_turn(payload.messages)
+            if routing.documentId is None:
+                return ChatResponse(
+                    reply=routing.reply,
+                    documentId=None,
+                    suggestedDocumentId=routing.suggestedDocumentId,
+                    fields={},
+                    isComplete=False,
+                )
+
+            # The routing turn only identifies the document type and cannot return
+            # field data (its structured-output schema has no field properties), so
+            # run the extraction turn immediately against the same messages instead
+            # of waiting for the next request - otherwise anything the user already
+            # stated about the document (parties, dates, terms, ...) in the message
+            # that triggered routing would be silently discarded.
+            definition = REGISTRY[routing.documentId]
+            reply, merged, is_complete = run_turn(
+                definition, payload.messages, definition.partial_model()
+            )
             return ChatResponse(
-                reply=routing.reply,
+                reply=reply,
                 documentId=routing.documentId,
-                suggestedDocumentId=routing.suggestedDocumentId,
-                fields={},
-                isComplete=False,
+                suggestedDocumentId=None,
+                fields=merged.model_dump(),
+                isComplete=is_complete,
             )
 
         definition = REGISTRY.get(payload.documentId)
