@@ -1,13 +1,13 @@
-import type { NdaChatRequest, NdaChatResponse } from "./chat-types";
+import type { ChatRequest, ChatResponse } from "./chat-types";
 
 const REQUEST_TIMEOUT_MS = 35_000;
 
-export async function postNdaChatTurn(request: NdaChatRequest): Promise<NdaChatResponse> {
+export async function postChatTurn(request: ChatRequest): Promise<ChatResponse> {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
   try {
-    const response = await fetch("/api/chat/nda", {
+    const response = await fetch("/api/chat/message", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(request),
@@ -15,7 +15,7 @@ export async function postNdaChatTurn(request: NdaChatRequest): Promise<NdaChatR
     });
 
     if (!response.ok) {
-      throw new Error(`NDA chat request failed with status ${response.status}`);
+      throw new Error(`Chat request failed with status ${response.status}`);
     }
 
     return response.json();

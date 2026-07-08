@@ -1,21 +1,21 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useNdaChat } from "@/hooks/useNdaChat";
-import type { PartialNdaFormData } from "@/lib/nda-types";
+import { useChat } from "@/hooks/useChat";
 
-interface NdaChatProps {
-  onComplete: (fields: PartialNdaFormData) => void;
-  onReview: (fields: PartialNdaFormData) => void;
+interface ChatProps {
+  onComplete: (documentId: string, fields: Record<string, unknown>) => void;
+  onReview: (documentId: string, fields: Record<string, unknown>) => void;
+  isPreparingDocument?: boolean;
 }
 
-export default function NdaChat({ onComplete, onReview }: NdaChatProps) {
-  const { messages, fields, isComplete, isLoading, error, sendMessage } = useNdaChat();
+export default function Chat({ onComplete, onReview, isPreparingDocument = false }: ChatProps) {
+  const { messages, documentId, fields, isComplete, isLoading, error, sendMessage } = useChat();
   const [input, setInput] = useState("");
 
   useEffect(() => {
-    if (isComplete) {
-      onComplete(fields);
+    if (isComplete && documentId) {
+      onComplete(documentId, fields);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isComplete]);
@@ -31,8 +31,8 @@ export default function NdaChat({ onComplete, onReview }: NdaChatProps) {
     <div className="flex flex-col gap-4">
       <div className="space-y-3">
         <div className="mr-8 rounded-lg bg-slate-50 px-4 py-3 text-sm text-slate-700">
-          Hi! Let&apos;s fill out your Mutual NDA together. Tell me about the two
-          parties involved and why you&apos;re sharing confidential information.
+          Hi! What kind of legal document do you need today? Tell me a bit about the
+          deal and I&apos;ll help you draft it.
         </div>
         {messages.map((message, index) => (
           <div
@@ -72,13 +72,16 @@ export default function NdaChat({ onComplete, onReview }: NdaChatProps) {
         </button>
       </form>
 
-      <button
-        type="button"
-        onClick={() => onReview(fields)}
-        className="self-start rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-[#032147] hover:bg-slate-50"
-      >
-        Review document
-      </button>
+      {documentId && (
+        <button
+          type="button"
+          onClick={() => onReview(documentId, fields)}
+          disabled={isPreparingDocument}
+          className="self-start rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-[#032147] hover:bg-slate-50 disabled:opacity-50"
+        >
+          {isPreparingDocument ? "Preparing document..." : "Review document"}
+        </button>
+      )}
     </div>
   );
 }
