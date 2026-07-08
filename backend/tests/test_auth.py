@@ -67,3 +67,50 @@ def test_signin_with_unknown_email(client):
         json={"email": "nobody@example.com", "password": "whatever"},
     )
     assert response.status_code == 401
+
+
+def test_signup_sets_session_cookie_and_authenticates_me(client):
+    response = client.post(
+        "/api/auth/signup",
+        json={"email": "frank@example.com", "password": "supersecret"},
+    )
+    assert "session_token" in response.cookies
+
+    me = client.get("/api/auth/me")
+    assert me.status_code == 200
+    assert me.json()["email"] == "frank@example.com"
+
+
+def test_signin_sets_session_cookie_and_authenticates_me(client):
+    client.post(
+        "/api/auth/signup",
+        json={"email": "grace@example.com", "password": "supersecret"},
+    )
+    client.cookies.clear()
+
+    client.post(
+        "/api/auth/signin",
+        json={"email": "grace@example.com", "password": "supersecret"},
+    )
+
+    me = client.get("/api/auth/me")
+    assert me.status_code == 200
+    assert me.json()["email"] == "grace@example.com"
+
+
+def test_me_without_session_is_unauthorized(client):
+    response = client.get("/api/auth/me")
+    assert response.status_code == 401
+
+
+def test_signout_clears_session(client):
+    client.post(
+        "/api/auth/signup",
+        json={"email": "heidi@example.com", "password": "supersecret"},
+    )
+
+    signout = client.post("/api/auth/signout")
+    assert signout.status_code == 204
+
+    me = client.get("/api/auth/me")
+    assert me.status_code == 401

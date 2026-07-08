@@ -1,16 +1,30 @@
 import sqlite3
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Response, status
 
 from .db import get_connection
 from .schemas import SigninRequest, SignupRequest, UserResponse
 from .security import hash_password, verify_password
+from .sessions import COOKIE_NAME, create_session, delete_session, get_current_user
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
+_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 7  # 1 week
+
+
+def _set_session_cookie(response: Response, token: str) -> None:
+    response.set_cookie(
+        key=COOKIE_NAME,
+        value=token,
+        httponly=True,
+        samesite="lax",
+        max_age=_COOKIE_MAX_AGE_SECONDS,
+        path="/",
+    )
+
 
 @router.post("/signup", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-def signup(payload: SignupRequest) -> UserResponse:
+def signup(payload: SignupRequest, response: Response) -> UserResponse:
     with get_connection() as conn:
         try:
             cursor = conn.execute(
@@ -29,11 +43,12 @@ def signup(payload: SignupRequest) -> UserResponse:
             (cursor.lastrowid,),
         ).fetchone()
 
+    _set_session_cookie(response, create_session(row["id"]))
     return UserResponse(**dict(row))
 
 
 @router.post("/signin", response_model=UserResponse)
-def signin(payload: SigninRequest) -> UserResponse:
+def signin(payload: SigninRequest, response: Response) -> UserResponse:
     with get_connection() as conn:
         row = conn.execute(
             "SELECT id, email, password_hash, created_at FROM users WHERE email = ?",
@@ -46,4 +61,17 @@ def signin(payload: SigninRequest) -> UserResponse:
             detail="Invalid email or password.",
         )
 
+    _set_session_cookie(response, create_session(row["id"]))
     return UserResponse(id=row["id"], email=row["email"], created_at=row["created_at"])
+
+
+@router.post("/signout", status_code=status.HTTP_204_NO_CONTENT)
+def signout(response: Response, session_token: str | None = Cookie(default=None)) -> None:
+    if session_token:
+        delete_session(session_token)
+    response.delete_cookie(COOKIE_NAME, path="/")
+
+
+@router.get("/me", response_model=UserResponse)
+def me(user: UserResponse = Depends(get_current_user)) -> UserResponse:
+    return user

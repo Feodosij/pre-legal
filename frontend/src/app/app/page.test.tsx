@@ -1,6 +1,11 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+const push = vi.fn();
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push }),
+}));
+
 const postChatTurn = vi.fn();
 vi.mock("@/lib/chat-client", () => ({
   postChatTurn: (...args: unknown[]) => postChatTurn(...args),
@@ -11,12 +16,32 @@ vi.mock("@/lib/document-render-client", () => ({
   fetchRenderedDocument: (...args: unknown[]) => fetchRenderedDocument(...args),
 }));
 
+const createDocument = vi.fn();
+const updateDocument = vi.fn();
+vi.mock("@/lib/document-client", () => ({
+  createDocument: (...args: unknown[]) => createDocument(...args),
+  updateDocument: (...args: unknown[]) => updateDocument(...args),
+}));
+
+const mockUser = { id: 1, email: "test@example.com", created_at: "2024-01-01" };
+const mockSignOut = vi.fn();
+vi.mock("@/hooks/useRequireAuth", () => ({
+  useRequireAuth: () => ({
+    user: mockUser,
+    isLoading: false,
+    signOut: mockSignOut,
+  }),
+}));
+
 import Home from "./page";
 
 describe("Home", () => {
   afterEach(() => {
+    push.mockReset();
     postChatTurn.mockReset();
     fetchRenderedDocument.mockReset();
+    createDocument.mockReset();
+    updateDocument.mockReset();
   });
 
   it("starts on the chat view with a placeholder in the preview panel", () => {
@@ -158,5 +183,37 @@ describe("Home", () => {
     await waitFor(() =>
       expect(screen.queryByRole("status", { name: /typing/i })).not.toBeInTheDocument()
     );
+  });
+
+  it("saves the document to history once a turn reports isComplete", async () => {
+    createDocument.mockResolvedValueOnce({
+      id: 42,
+      documentId: "mutual-nda",
+      title: "Mutual Non-Disclosure Agreement",
+      fields: {},
+      isComplete: true,
+      createdAt: "2024-01-01",
+      updatedAt: "2024-01-01",
+    });
+    postChatTurn.mockResolvedValueOnce({
+      reply: "All set!",
+      documentId: "mutual-nda",
+      suggestedDocumentId: null,
+      fields: { governingLaw: "Delaware" },
+      isComplete: true,
+    });
+
+    render(<Home />);
+    fireEvent.change(screen.getByPlaceholderText("Type your answer..."), {
+      target: { value: "Delaware" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+
+    await waitFor(() => expect(createDocument).toHaveBeenCalledWith(
+      "mutual-nda",
+      { governingLaw: "Delaware" },
+      true
+    ));
+    expect(await screen.findByText("Saved to your documents")).toBeInTheDocument();
   });
 });
