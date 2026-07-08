@@ -6,7 +6,17 @@ This is a SaaS product to allow users to draft legal agreements based on templat
 
 @catalog.json
 
-Before we start: the initial implementation is a frontend-only prototype that only supports the Mutual NDA document with no AI chat.
+Before we start: the initial implementation was a frontend-only prototype that only supported the Mutual NDA document with no AI chat. The V1 technical foundation (Docker, FastAPI backend, static frontend) has since been built — see "Implementation status" below.
+
+## Implementation status
+
+- **Backend** (`backend/`): `uv` project using FastAPI (`backend/src/prelegal_backend/`). SQLite database is dropped and recreated from scratch on every startup (`init_db()` run in the app `lifespan`), with a `users` table and working `POST /api/auth/signup` / `POST /api/auth/signin` endpoints (PBKDF2 password hashing, stdlib only). `GET /api/health` is also available.
+- **Frontend** (`frontend/`): Next.js app built as a static export (`next.config.ts` `output: "export"`). The Mutual NDA Creator lives at `/app`. `/` is a fake login screen (sign in/sign up tabs) with no real authentication or backend calls — submitting just navigates to `/app`, per the "no authentication yet" scope for V1.
+- **AI chat** (`backend/src/prelegal_backend/chat.py`, `nda_chat.py`, `llm_client.py`; `frontend/src/components/NdaChat.tsx`, `frontend/src/hooks/useNdaChat.ts`): replaces the old manual form. A free-form chat at `/app` asks the user about the Mutual NDA's fields; `POST /api/chat/nda` is stateless per-request (the frontend sends the full message history plus accumulated fields each turn, and the backend returns the merged fields, a conversational reply, and an `isComplete` flag). The LLM call uses the mandated LiteLLM/OpenRouter free-tier model with Structured Outputs (`llm_client.py`). Still only supports the Mutual NDA.
+- **Docker**: single multi-stage `Dockerfile` builds the frontend static export, installs the backend with `uv`, and serves the static build via FastAPI's `StaticFiles` (mounted after `/api/*` routes so they take precedence). Exposes port 8000.
+- **Scripts**: `scripts/start-*` / `stop-*` for Mac, Linux, and Windows build/run/stop the Docker container, wired to `--env-file .env` for the OpenRouter key.
+- **Tests**: `backend/tests/` (pytest + FastAPI TestClient) covers auth and AI chat happy/error paths. `frontend/` has a Vitest + React Testing Library setup covering the login page, the chat UI, and the chat hook/client.
+- **Not yet implemented**: real authentication/session handling, and support for any document other than the Mutual NDA.
 
 ## Development process
 

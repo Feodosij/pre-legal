@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel, EmailStr, Field
 
 
@@ -15,3 +17,40 @@ class UserResponse(BaseModel):
     id: int
     email: EmailStr
     created_at: str
+
+
+class ChatMessage(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str
+
+
+class PartialPartyInfo(BaseModel):
+    companyName: str | None = None
+    printName: str | None = None
+    title: str | None = None
+    noticeAddress: str | None = None
+
+
+class PartialNdaFormData(BaseModel):
+    partyOne: PartialPartyInfo | None = None
+    partyTwo: PartialPartyInfo | None = None
+    purpose: str | None = None
+    effectiveDate: str | None = None
+    mndaTerm: Literal["expires", "untilTerminated"] | None = None
+    mndaTermYears: int | None = None
+    confidentialityTerm: Literal["years", "perpetuity"] | None = None
+    confidentialityTermYears: int | None = None
+    governingLaw: str | None = None
+    jurisdiction: str | None = None
+    modifications: str | None = None
+
+
+class NdaChatRequest(BaseModel):
+    messages: list[ChatMessage]
+    fields: PartialNdaFormData = PartialNdaFormData()
+
+
+class NdaChatResponse(BaseModel):
+    reply: str
+    fields: PartialNdaFormData
+    isComplete: bool
