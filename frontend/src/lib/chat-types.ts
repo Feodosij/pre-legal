@@ -1,17 +1,18 @@
-import type { PartialNdaFormData } from "./nda-types";
-
 export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
 }
 
-export interface NdaChatRequest {
+export interface ChatRequest {
   messages: ChatMessage[];
-  fields: PartialNdaFormData;
+  documentId: string | null;
+  fields: Record<string, unknown>;
 }
 
-export interface NdaChatResponse {
+export interface ChatResponse {
   reply: string;
-  fields: PartialNdaFormData;
+  documentId: string | null;
+  suggestedDocumentId: string | null;
+  fields: Record<string, unknown>;
   isComplete: boolean;
 }

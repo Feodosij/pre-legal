@@ -17,9 +17,13 @@ COPY backend/src ./src
 RUN uv sync --frozen --no-dev
 
 COPY --from=frontend-builder /frontend/out ./static
+COPY catalog.json ./catalog.json
+COPY templates ./templates
 
 ENV PRELEGAL_DB_PATH=/app/prelegal.db
 ENV PRELEGAL_STATIC_DIR=/app/static
+ENV PRELEGAL_CATALOG_PATH=/app/catalog.json
+ENV PRELEGAL_TEMPLATES_DIR=/app/templates
 ENV PATH="/app/.venv/bin:$PATH"
 
 EXPOSE 8000

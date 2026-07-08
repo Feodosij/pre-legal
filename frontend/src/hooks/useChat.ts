@@ -1,11 +1,12 @@
 import { useState } from "react";
+import { postChatTurn } from "@/lib/chat-client";
 import type { ChatMessage } from "@/lib/chat-types";
-import { postNdaChatTurn } from "@/lib/nda-chat-client";
-import type { PartialNdaFormData } from "@/lib/nda-types";
 
-export function useNdaChat() {
+export function useChat() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [fields, setFields] = useState<PartialNdaFormData>({});
+  const [documentId, setDocumentId] = useState<string | null>(null);
+  const [suggestedDocumentId, setSuggestedDocumentId] = useState<string | null>(null);
+  const [fields, setFields] = useState<Record<string, unknown>>({});
   const [isComplete, setIsComplete] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -20,8 +21,10 @@ export function useNdaChat() {
     setIsLoading(true);
 
     try {
-      const response = await postNdaChatTurn({ messages: nextMessages, fields });
+      const response = await postChatTurn({ messages: nextMessages, documentId, fields });
       setMessages([...nextMessages, { role: "assistant", content: response.reply }]);
+      setDocumentId(response.documentId);
+      setSuggestedDocumentId(response.suggestedDocumentId);
       setFields(response.fields);
       setIsComplete(response.isComplete);
     } catch {
@@ -31,5 +34,14 @@ export function useNdaChat() {
     }
   };
 
-  return { messages, fields, isComplete, isLoading, error, sendMessage };
+  return {
+    messages,
+    documentId,
+    suggestedDocumentId,
+    fields,
+    isComplete,
+    isLoading,
+    error,
+    sendMessage,
+  };
 }

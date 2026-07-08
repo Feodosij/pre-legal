@@ -45,12 +45,15 @@ class PartialNdaFormData(BaseModel):
     modifications: str | None = None
 
 
-class NdaChatRequest(BaseModel):
+class ChatRequest(BaseModel):
     messages: list[ChatMessage]
-    fields: PartialNdaFormData = PartialNdaFormData()
+    documentId: str | None = None
+    fields: dict[str, object] = {}
 
 
-class NdaChatResponse(BaseModel):
+class ChatResponse(BaseModel):
     reply: str
-    fields: PartialNdaFormData
+    documentId: str | None
+    suggestedDocumentId: str | None = None
+    fields: dict[str, object]
     isComplete: bool
