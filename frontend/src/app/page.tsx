@@ -1,17 +1,40 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { user, isLoading: isAuthLoading, signIn, signUp } = useAuth();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (event: React.FormEvent) => {
+  useEffect(() => {
+    if (!isAuthLoading && user) {
+      router.push("/app/");
+    }
+  }, [isAuthLoading, user, router]);
+
+  const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    router.push("/app/");
+    setError(null);
+    setIsSubmitting(true);
+    try {
+      if (mode === "signin") {
+        await signIn(email, password);
+      } else {
+        await signUp(email, password);
+      }
+      router.push("/app/");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -25,7 +48,10 @@ export default function LoginPage() {
         <div className="mb-6 flex rounded-md border border-slate-200 p-1 text-sm font-semibold">
           <button
             type="button"
-            onClick={() => setMode("signin")}
+            onClick={() => {
+              setMode("signin");
+              setError(null);
+            }}
             className={`flex-1 rounded px-3 py-1.5 transition-colors ${
               mode === "signin"
                 ? "bg-[#209dd7] text-white"
@@ -36,7 +62,10 @@ export default function LoginPage() {
           </button>
           <button
             type="button"
-            onClick={() => setMode("signup")}
+            onClick={() => {
+              setMode("signup");
+              setError(null);
+            }}
             className={`flex-1 rounded px-3 py-1.5 transition-colors ${
               mode === "signup"
                 ? "bg-[#209dd7] text-white"
@@ -74,12 +103,24 @@ export default function LoginPage() {
               className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-[#209dd7] focus:outline-none focus:ring-1 focus:ring-[#209dd7]"
             />
           </div>
+
+          {error && (
+            <p role="alert" className="text-sm text-red-700">
+              {error}
+            </p>
+          )}
+
           <button
             type="submit"
             data-testid="submit-button"
-            className="w-full rounded-md bg-[#753991] px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
+            disabled={isSubmitting}
+            className="w-full rounded-md bg-[#753991] px-4 py-2 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-60"
           >
-            {mode === "signin" ? "Sign in" : "Create account"}
+            {isSubmitting
+              ? "Please wait..."
+              : mode === "signin"
+                ? "Sign in"
+                : "Create account"}
           </button>
         </form>
       </div>

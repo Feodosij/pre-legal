@@ -30,8 +30,8 @@ export default function Chat({ messages, isLoading, error, onSend }: ChatProps) 
   };
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="max-h-[500px] min-h-[320px] space-y-3 overflow-y-auto rounded-lg bg-slate-100 p-4">
+    <div className="flex h-full min-h-0 flex-col gap-4">
+      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto rounded-lg bg-slate-100 p-4">
         <ChatBubble role="assistant">{GREETING}</ChatBubble>
         {messages.map((message, index) => (
           <ChatBubble key={index} role={message.role}>

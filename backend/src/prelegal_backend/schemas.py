@@ -57,3 +57,27 @@ class ChatResponse(BaseModel):
     suggestedDocumentId: str | None = None
     fields: dict[str, object]
     isComplete: bool
+
+
+class DocumentCreateRequest(BaseModel):
+    documentId: str
+    fields: dict[str, object] = {}
+    isComplete: bool = False
+
+
+class DocumentUpdateRequest(BaseModel):
+    fields: dict[str, object]
+    isComplete: bool = False
+
+
+class DocumentSummary(BaseModel):
+    id: int
+    documentId: str
+    title: str
+    isComplete: bool
+    createdAt: str
+    updatedAt: str
+
+
+class DocumentResponse(DocumentSummary):
+    fields: dict[str, object]
