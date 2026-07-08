@@ -1,115 +1,68 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
-
-const postChatTurn = vi.fn();
-vi.mock("@/lib/chat-client", () => ({
-  postChatTurn: (...args: unknown[]) => postChatTurn(...args),
-}));
-
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 import Chat from "./Chat";
 
 describe("Chat", () => {
-  afterEach(() => {
-    postChatTurn.mockReset();
+  it("shows the greeting bubble on first render with no messages", () => {
+    render(<Chat messages={[]} isLoading={false} error={null} onSend={vi.fn()} />);
+    expect(
+      screen.getByText(/What kind of legal document do you need/)
+    ).toBeInTheDocument();
   });
 
-  it("sends the typed message and renders both the user message and the assistant reply", async () => {
-    postChatTurn.mockResolvedValueOnce({
-      reply: "What kind of document do you need?",
-      documentId: null,
-      suggestedDocumentId: null,
-      fields: {},
-      isComplete: false,
-    });
-
-    render(<Chat onComplete={vi.fn()} onReview={vi.fn()} />);
-
-    fireEvent.change(screen.getByPlaceholderText("Type your answer..."), {
-      target: { value: "I need an NDA" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+  it("renders user and assistant messages", () => {
+    render(
+      <Chat
+        messages={[
+          { role: "user", content: "I need an NDA" },
+          { role: "assistant", content: "Great, let's get started." },
+        ]}
+        isLoading={false}
+        error={null}
+        onSend={vi.fn()}
+      />
+    );
 
     expect(screen.getByText("I need an NDA")).toBeInTheDocument();
-    await waitFor(() =>
-      expect(screen.getByText("What kind of document do you need?")).toBeInTheDocument()
-    );
+    expect(screen.getByText("Great, let's get started.")).toBeInTheDocument();
   });
 
-  it("does not show the Review document button until a document has been selected", async () => {
-    render(<Chat onComplete={vi.fn()} onReview={vi.fn()} />);
-    expect(screen.queryByRole("button", { name: "Review document" })).not.toBeInTheDocument();
+  it("calls onSend with the typed text and clears the input", () => {
+    const onSend = vi.fn();
+    render(<Chat messages={[]} isLoading={false} error={null} onSend={onSend} />);
 
-    postChatTurn.mockResolvedValueOnce({
-      reply: "Let's draft a Pilot Agreement.",
-      documentId: "pilot-agreement",
-      suggestedDocumentId: null,
-      fields: {},
-      isComplete: false,
-    });
     fireEvent.change(screen.getByPlaceholderText("Type your answer..."), {
-      target: { value: "A pilot agreement" },
+      target: { value: "Hello there" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Send" }));
 
-    await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Review document" })).toBeInTheDocument()
-    );
+    expect(onSend).toHaveBeenCalledWith("Hello there");
+    expect(screen.getByPlaceholderText("Type your answer...")).toHaveValue("");
   });
 
-  it("calls onReview with the documentId and current fields when clicked", async () => {
-    const onReview = vi.fn();
-    postChatTurn.mockResolvedValueOnce({
-      reply: "Let's draft a Pilot Agreement.",
-      documentId: "pilot-agreement",
-      suggestedDocumentId: null,
-      fields: { governingLaw: "Delaware" },
-      isComplete: false,
-    });
-
-    render(<Chat onComplete={vi.fn()} onReview={onReview} />);
-    fireEvent.change(screen.getByPlaceholderText("Type your answer..."), {
-      target: { value: "A pilot agreement" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Send" }));
-    await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Review document" })).toBeInTheDocument()
-    );
-
-    fireEvent.click(screen.getByRole("button", { name: "Review document" }));
-
-    expect(onReview).toHaveBeenCalledWith("pilot-agreement", { governingLaw: "Delaware" });
+  it("shows a typing indicator while isLoading is true", () => {
+    render(<Chat messages={[]} isLoading={true} error={null} onSend={vi.fn()} />);
+    expect(screen.getByRole("status", { name: /typing/i })).toBeInTheDocument();
   });
 
-  it("calls onComplete once the assistant marks the conversation complete", async () => {
-    postChatTurn.mockResolvedValueOnce({
-      reply: "All set!",
-      documentId: "pilot-agreement",
-      suggestedDocumentId: null,
-      fields: { governingLaw: "Delaware" },
-      isComplete: true,
-    });
-    const onComplete = vi.fn();
-
-    render(<Chat onComplete={onComplete} onReview={vi.fn()} />);
-    fireEvent.change(screen.getByPlaceholderText("Type your answer..."), {
-      target: { value: "Delaware" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Send" }));
-
-    await waitFor(() =>
-      expect(onComplete).toHaveBeenCalledWith("pilot-agreement", { governingLaw: "Delaware" })
-    );
+  it("does not show a typing indicator when not loading", () => {
+    render(<Chat messages={[]} isLoading={false} error={null} onSend={vi.fn()} />);
+    expect(screen.queryByRole("status", { name: /typing/i })).not.toBeInTheDocument();
   });
 
-  it("shows an error banner when the request fails", async () => {
-    postChatTurn.mockRejectedValueOnce(new Error("network down"));
+  it("disables input and send button while loading", () => {
+    render(<Chat messages={[]} isLoading={true} error={null} onSend={vi.fn()} />);
+    expect(screen.getByPlaceholderText("Type your answer...")).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Send" })).toBeDisabled();
+  });
 
-    render(<Chat onComplete={vi.fn()} onReview={vi.fn()} />);
-    fireEvent.change(screen.getByPlaceholderText("Type your answer..."), {
-      target: { value: "hi" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+  it("shows an error banner when error is set", () => {
+    render(<Chat messages={[]} isLoading={false} error="network down" onSend={vi.fn()} />);
+    expect(screen.getByRole("alert")).toHaveTextContent("network down");
+  });
 
-    await waitFor(() => expect(screen.getByRole("alert")).toBeInTheDocument());
+  it("disables the send button for blank input", () => {
+    render(<Chat messages={[]} isLoading={false} error={null} onSend={vi.fn()} />);
+    expect(screen.getByRole("button", { name: "Send" })).toBeDisabled();
   });
 });
