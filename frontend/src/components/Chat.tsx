@@ -1,51 +1,45 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useChat } from "@/hooks/useChat";
+import { useEffect, useRef, useState } from "react";
+import type { ChatMessage } from "@/lib/chat-types";
 
 interface ChatProps {
-  onComplete: (documentId: string, fields: Record<string, unknown>) => void;
-  onReview: (documentId: string, fields: Record<string, unknown>) => void;
-  isPreparingDocument?: boolean;
+  messages: ChatMessage[];
+  isLoading: boolean;
+  error: string | null;
+  onSend: (text: string) => void;
 }
 
-export default function Chat({ onComplete, onReview, isPreparingDocument = false }: ChatProps) {
-  const { messages, documentId, fields, isComplete, isLoading, error, sendMessage } = useChat();
+const GREETING =
+  "Hi! What kind of legal document do you need today? Tell me a bit about the " +
+  "deal and I'll help you draft it.";
+
+export default function Chat({ messages, isLoading, error, onSend }: ChatProps) {
   const [input, setInput] = useState("");
+  const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (isComplete && documentId) {
-      onComplete(documentId, fields);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isComplete]);
+    bottomRef.current?.scrollIntoView?.({ behavior: "smooth", block: "end" });
+  }, [messages, isLoading]);
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
     const text = input;
     setInput("");
-    sendMessage(text);
+    onSend(text);
   };
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="space-y-3">
-        <div className="mr-8 rounded-lg bg-slate-50 px-4 py-3 text-sm text-slate-700">
-          Hi! What kind of legal document do you need today? Tell me a bit about the
-          deal and I&apos;ll help you draft it.
-        </div>
+      <div className="max-h-[500px] min-h-[320px] space-y-3 overflow-y-auto rounded-lg bg-slate-100 p-4">
+        <ChatBubble role="assistant">{GREETING}</ChatBubble>
         {messages.map((message, index) => (
-          <div
-            key={index}
-            className={`rounded-lg px-4 py-3 text-sm ${
-              message.role === "user"
-                ? "ml-8 bg-[#209dd7] text-white"
-                : "mr-8 bg-slate-50 text-slate-700"
-            }`}
-          >
+          <ChatBubble key={index} role={message.role}>
             {message.content}
-          </div>
+          </ChatBubble>
         ))}
+        {isLoading && <TypingIndicator />}
+        <div ref={bottomRef} />
       </div>
 
       {error && (
@@ -71,17 +65,53 @@ export default function Chat({ onComplete, onReview, isPreparingDocument = false
           Send
         </button>
       </form>
+    </div>
+  );
+}
 
-      {documentId && (
-        <button
-          type="button"
-          onClick={() => onReview(documentId, fields)}
-          disabled={isPreparingDocument}
-          className="self-start rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-[#032147] hover:bg-slate-50 disabled:opacity-50"
-        >
-          {isPreparingDocument ? "Preparing document..." : "Review document"}
-        </button>
-      )}
+function ChatBubble({
+  role,
+  children,
+}: {
+  role: "user" | "assistant";
+  children: React.ReactNode;
+}) {
+  const isUser = role === "user";
+  return (
+    <div className={`flex items-end gap-2 ${isUser ? "flex-row-reverse" : ""}`}>
+      <div
+        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white ${
+          isUser ? "bg-[#753991]" : "bg-[#209dd7]"
+        }`}
+      >
+        {isUser ? "U" : "A"}
+      </div>
+      <div
+        className={`max-w-[75%] rounded-2xl px-4 py-2 text-sm ${
+          isUser ? "bg-[#209dd7] text-white" : "bg-white text-slate-700 shadow-sm"
+        }`}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function TypingIndicator() {
+  return (
+    <div className="flex items-end gap-2">
+      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#209dd7] text-xs font-semibold text-white">
+        A
+      </div>
+      <div
+        className="flex items-center gap-1 rounded-2xl bg-white px-4 py-3 shadow-sm"
+        role="status"
+        aria-label="Assistant is typing"
+      >
+        <span className="h-2 w-2 animate-bounce rounded-full bg-slate-400 [animation-delay:-0.3s]" />
+        <span className="h-2 w-2 animate-bounce rounded-full bg-slate-400 [animation-delay:-0.15s]" />
+        <span className="h-2 w-2 animate-bounce rounded-full bg-slate-400" />
+      </div>
     </div>
   );
 }

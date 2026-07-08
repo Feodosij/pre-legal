@@ -1,5 +1,5 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 const postChatTurn = vi.fn();
 vi.mock("@/lib/chat-client", () => ({
@@ -14,18 +14,26 @@ vi.mock("@/lib/document-render-client", () => ({
 import Home from "./page";
 
 describe("Home", () => {
-  it("starts on the chat view", () => {
-    render(<Home />);
-    expect(screen.getByText(/What kind of legal document do you need/)).toBeInTheDocument();
+  afterEach(() => {
+    postChatTurn.mockReset();
+    fetchRenderedDocument.mockReset();
   });
 
-  it("shows the Mutual NDA document view via the existing NDA renderer when documentId is mutual-nda", async () => {
+  it("starts on the chat view with a placeholder in the preview panel", () => {
+    render(<Home />);
+    expect(screen.getByText(/What kind of legal document do you need/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/your draft will appear here as you fill in the details/)
+    ).toBeInTheDocument();
+  });
+
+  it("shows the live Mutual NDA preview as soon as documentId resolves, without any extra click", async () => {
     postChatTurn.mockResolvedValueOnce({
-      reply: "All set!",
+      reply: "Got it.",
       documentId: "mutual-nda",
       suggestedDocumentId: null,
       fields: { governingLaw: "Delaware" },
-      isComplete: true,
+      isComplete: false,
     });
 
     render(<Home />);
@@ -34,20 +42,19 @@ describe("Home", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Send" }));
 
-    await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Back to chat" })).toBeInTheDocument()
-    );
+    await waitFor(() => expect(screen.getAllByText(/Delaware/).length).toBeGreaterThan(0));
     expect(fetchRenderedDocument).not.toHaveBeenCalled();
-    expect(screen.getAllByText(/Delaware/).length).toBeGreaterThan(0);
+    // The chat panel is still visible alongside the live preview.
+    expect(screen.getByPlaceholderText("Type your answer...")).toBeInTheDocument();
   });
 
-  it("fetches and shows a generic rendered document for other supported document types", async () => {
+  it("fetches and shows a live generic preview for other supported document types", async () => {
     postChatTurn.mockResolvedValueOnce({
-      reply: "All set!",
+      reply: "Got it.",
       documentId: "pilot-agreement",
       suggestedDocumentId: null,
       fields: { governingLaw: "Delaware" },
-      isComplete: true,
+      isComplete: false,
     });
     fetchRenderedDocument.mockResolvedValueOnce({
       title: "Pilot Agreement",
@@ -69,63 +76,87 @@ describe("Home", () => {
     });
   });
 
-  it("disables Review document and shows a preparing message while a render request is in flight", async () => {
-    postChatTurn.mockResolvedValueOnce({
-      reply: "What's the governing law?",
-      documentId: "pilot-agreement",
-      suggestedDocumentId: null,
-      fields: {},
-      isComplete: false,
-    });
-    let resolveRender: (value: unknown) => void = () => {};
-    fetchRenderedDocument.mockImplementationOnce(
-      () => new Promise((resolve) => { resolveRender = resolve; })
-    );
+  it("re-fetches the generic preview on every subsequent turn, showing the latest even if an earlier request resolves later", async () => {
+    postChatTurn
+      .mockResolvedValueOnce({
+        reply: "Got it.",
+        documentId: "pilot-agreement",
+        suggestedDocumentId: null,
+        fields: { governingLaw: "Delaware" },
+        isComplete: false,
+      })
+      .mockResolvedValueOnce({
+        reply: "Updated.",
+        documentId: "pilot-agreement",
+        suggestedDocumentId: null,
+        fields: { governingLaw: "Texas" },
+        isComplete: false,
+      });
+
+    let resolveFirst: (value: unknown) => void = () => {};
+    let resolveSecond: (value: unknown) => void = () => {};
+    fetchRenderedDocument
+      .mockImplementationOnce(() => new Promise((resolve) => { resolveFirst = resolve; }))
+      .mockImplementationOnce(() => new Promise((resolve) => { resolveSecond = resolve; }));
 
     render(<Home />);
+
     fireEvent.change(screen.getByPlaceholderText("Type your answer..."), {
-      target: { value: "Let's start" },
+      target: { value: "Delaware" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Send" }));
-    await screen.findByText("What's the governing law?");
+    await waitFor(() => expect(fetchRenderedDocument).toHaveBeenCalledTimes(1));
 
-    fireEvent.click(screen.getByRole("button", { name: "Review document" }));
-    const preparingButton = await screen.findByRole("button", { name: "Preparing document..." });
-    expect(preparingButton).toBeDisabled();
+    fireEvent.change(screen.getByPlaceholderText("Type your answer..."), {
+      target: { value: "Texas" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    await waitFor(() => expect(fetchRenderedDocument).toHaveBeenCalledTimes(2));
 
-    resolveRender({
+    const preview = screen.getByTestId("document-preview");
+
+    resolveSecond({
       title: "Pilot Agreement",
       partyRoleLabels: [],
       partyRows: [],
-      coverFields: [],
+      coverFields: [{ label: "Governing Law", value: "Texas" }],
       sections: [],
     });
-    await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Back to chat" })).toBeInTheDocument()
-    );
+    await waitFor(() => expect(within(preview).getByText("Texas")).toBeInTheDocument());
+
+    resolveFirst({
+      title: "Pilot Agreement",
+      partyRoleLabels: [],
+      partyRows: [],
+      coverFields: [{ label: "Governing Law", value: "Delaware" }],
+      sections: [],
+    });
+
+    expect(within(preview).getByText("Texas")).toBeInTheDocument();
+    expect(within(preview).queryByText("Delaware")).not.toBeInTheDocument();
   });
 
-  it("keeps the conversation when going back to chat after reviewing the document", async () => {
-    postChatTurn.mockResolvedValueOnce({
-      reply: "What's the governing law?",
-      documentId: "mutual-nda",
+  it("shows a typing indicator in the chat panel while a turn is in flight", async () => {
+    let resolveTurn: (value: unknown) => void = () => {};
+    postChatTurn.mockImplementationOnce(() => new Promise((resolve) => { resolveTurn = resolve; }));
+
+    render(<Home />);
+    fireEvent.change(screen.getByPlaceholderText("Type your answer..."), {
+      target: { value: "Hello" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+
+    expect(await screen.findByRole("status", { name: /typing/i })).toBeInTheDocument();
+
+    resolveTurn({
+      reply: "Hi!",
+      documentId: null,
       suggestedDocumentId: null,
       fields: {},
       isComplete: false,
     });
-
-    render(<Home />);
-
-    fireEvent.change(screen.getByPlaceholderText("Type your answer..."), {
-      target: { value: "Let's start" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Send" }));
-    expect(await screen.findByText("What's the governing law?")).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: "Review document" }));
-    fireEvent.click(screen.getByRole("button", { name: "Back to chat" }));
-
-    expect(screen.getByText("Let's start")).toBeInTheDocument();
-    expect(screen.getByText("What's the governing law?")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.queryByRole("status", { name: /typing/i })).not.toBeInTheDocument()
+    );
   });
 });
